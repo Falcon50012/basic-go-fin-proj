@@ -36,9 +36,6 @@ func main() {
 				if err != nil {
 					log.Printf("Request error: %v", err)
 				}
-				mu.Lock()
-				requestsCounter++ // Need sync!
-				mu.Unlock()
 
 				response, err := client.Do(request)
 				if err != nil {
@@ -46,13 +43,13 @@ func main() {
 				}
 
 				mu.Lock()
+				requestsCounter++
 				statusesCounter[response.StatusCode]++
 				mu.Unlock()
 
 				log.Printf("ВОРКЕР # %v СТАТУС ОТВЕТА: %v", workerID, response.Status)
 			}
 		}(i)
-		//wg.Wait() - !!!
 	}
 	wg.Wait()
 
