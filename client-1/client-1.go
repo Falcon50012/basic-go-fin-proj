@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	UUID = "6e3c3a57-7f91-4fa5-b75a-5a7373c913bf"
 	//requests      = 100
 	workers       = 2
 	reqsPerWorker = 5
@@ -15,9 +16,10 @@ const (
 
 func main() {
 	client := http.Client{}
+	//UUID := uuid.New().String()
+	//fmt.Println("UUID:", UUID)
 
-	mu := sync.Mutex{} // Is it worth using one mutex to control multiple entities?
-
+	mu := sync.Mutex{}
 	requestsCounter := 0
 	statusesCounter := map[int]int{
 		http.StatusOK:                  0,
@@ -36,6 +38,8 @@ func main() {
 				if err != nil {
 					log.Printf("Request error: %v", err)
 				}
+
+				request.Header.Add("UUID", UUID)
 
 				response, err := client.Do(request)
 				if err != nil {
