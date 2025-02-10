@@ -122,6 +122,10 @@ func main() {
 		c.JSON(randStatus, gin.H{})
 	})
 
+	r.POST("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{})
+	})
+
 	r.GET("/statistics", func(c *gin.Context) {
 		mu.Lock()
 		defer mu.Unlock()

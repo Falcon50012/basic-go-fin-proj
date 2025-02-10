@@ -1,17 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"golang.org/x/time/rate"
 	"log"
 	"net/http"
 	"sync"
 )
 
 const (
-	UUID = "6e3c3a57-7f91-4fa5-b75a-5a7373c913bf"
-	//requests      = 100
+	UUID          = "6e3c3a57-7f91-4fa5-b75a-5a7373c913bf"
 	workers       = 2
-	reqsPerWorker = 5
+	reqsPerWorker = 50
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	//UUID := uuid.New().String()
 	//fmt.Println("UUID:", UUID)
 
-	mu := sync.Mutex{}
+	var mu sync.Mutex // Так правильно в отличие от mu := sync.Mutex{} ?
 	requestsCounter := 0
 	statusesCounter := map[int]int{
 		http.StatusOK:                  0,
@@ -28,12 +29,21 @@ func main() {
 		http.StatusInternalServerError: 0,
 	}
 
+	limiter := rate.NewLimiter(5, 5)
+	ctx := context.Background()
+
 	wg := sync.WaitGroup{}
 	wg.Add(workers)
 	for i := 1; i <= workers; i++ {
 		go func(workerID int) {
 			defer wg.Done()
 			for j := 1; j <= reqsPerWorker; j++ {
+
+				if err := limiter.Wait(ctx); err != nil {
+					log.Printf("Too many requests per second: %v", err)
+					continue
+				}
+
 				request, err := http.NewRequest(http.MethodPost, "http://localhost:8080/requests", nil)
 				if err != nil {
 					log.Printf("Request error: %v", err)
@@ -52,6 +62,7 @@ func main() {
 				mu.Unlock()
 
 				log.Printf("ВОРКЕР # %v СТАТУС ОТВЕТА: %v", workerID, response.Status)
+
 			}
 		}(i)
 	}
