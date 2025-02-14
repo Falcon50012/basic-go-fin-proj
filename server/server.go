@@ -1,56 +1,10 @@
-// v0.1
-//package main
-//
-//import (
-//	"github.com/gin-gonic/gin"
-//	"github.com/joho/godotenv"
-//	"log"
-//	"math/rand"
-//	"net/http"
-//	"os"
-//)
-//
-//func main() {
-//	err := godotenv.Load()
-//	if err != nil {
-//		log.Fatal("Error loading .env file")
-//	}
-//
-//	port := os.Getenv("PORT")
-//	if port == "" {
-//		port = "8080"
-//	}
-//
-//	r := gin.Default()
-//	r.GET("/", func(c *gin.Context) {
-//		c.JSON(http.StatusOK, gin.H{
-//			"message": "Привет, WB и Димончик-братка!",
-//		})
-//	})
-//
-//	statuses := []int{http.StatusOK, http.StatusAccepted, http.StatusBadRequest, http.StatusInternalServerError}
-//	goodStatuses := 0
-//	badStatuses := 0
-//
-//	// TODO: Try make 70 good/30 bad statuses.
-//	r.POST("/requests", func(c *gin.Context) {
-//		randStatus := statuses[rand.Intn(len(statuses))]
-//		if randStatus == http.StatusOK || randStatus == http.StatusAccepted {
-//			goodStatuses++
-//		} else {
-//			badStatuses++
-//		}
-//		c.JSON(randStatus, gin.H{})
-//	})
-//	r.Run(":" + port)
-//}
-
-// v0.2
 package main
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 	"log"
 	"math/rand"
 	"net/http"
@@ -72,7 +26,7 @@ type ServerStatistics struct {
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Ошибка загрузки .env файла")
 	}
 
 	port := os.Getenv("PORT")
@@ -88,21 +42,26 @@ func main() {
 	r := gin.Default()
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Привет, WB и Димончик-братка!",
+			"message": "Привет, WB!",
 		})
 	})
 
-	statuses := []int{http.StatusOK, http.StatusAccepted, http.StatusBadRequest, http.StatusInternalServerError}
+	ctx := context.Background()
+	limiter := rate.NewLimiter(5, 1)
 
-	// TODO: Try make 70 good/30 bad statuses?
 	r.POST("/requests", func(c *gin.Context) {
 		mu.Lock()
 		defer mu.Unlock()
 
+		statuses := []int{http.StatusOK, http.StatusAccepted, http.StatusBadRequest, http.StatusInternalServerError}
+
+		if err = limiter.Wait(ctx); err != nil {
+			log.Printf("Количество запросов превышено: %v", err)
+		}
+
 		UUID := c.Request.Header.Get("UUID")
 		randStatus := statuses[rand.Intn(len(statuses))]
-
-		// Инициализации статистики клиента, если она отсутствует
+		
 		if _, exists := stats.ClientsReqs[UUID]; !exists {
 			stats.ClientsReqs[UUID] = Client{}
 		}
@@ -131,8 +90,11 @@ func main() {
 		defer mu.Unlock()
 
 		c.JSON(http.StatusOK, gin.H{
-			"statistics": stats,
+			"Statistics": stats,
 		})
 	})
-	r.Run(":" + port)
+	err = r.Run(":" + port)
+	if err != nil {
+		log.Fatalf("Ошибка при старте сервера: %v", err)
+	}
 }

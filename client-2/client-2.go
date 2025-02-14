@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	UUID          = "6e3c3a57-7f91-4fa5-b75a-5a7373c913bf"
+	UUID          = "64387b8d-0db6-4c41-addb-6d593507bd89"
 	workers       = 2
 	reqsPerWorker = 50
 )
